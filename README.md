@@ -88,6 +88,10 @@ Received files are saved to `~/Downloads/clip-sync/` (auto-detected via `xdg-use
 ## Uninstall
 
 ```bash
+# From anywhere:
+sudo clip-sync --uninstall
+
+# Or from project directory:
 sudo make uninstall
 ```
 
