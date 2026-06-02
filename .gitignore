@@ -1,0 +1,4 @@
+clip-set-files
+*.o
+*.log
+__pycache__/
