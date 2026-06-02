@@ -16,6 +16,15 @@ import os
 import sys
 import subprocess
 
+# --uninstall: remove clip-sync from system
+if "--uninstall" in sys.argv:
+    for f in ["/usr/local/bin/clip-sync", "/usr/local/bin/clip-set-files"]:
+        if os.path.exists(f):
+            os.remove(f)
+            print(f"Removed {f}")
+    print("clip-sync uninstalled")
+    sys.exit(0)
+
 # --stop: kill running instance
 if "--stop" in sys.argv:
     subprocess.run(["pkill", "-f", "clip-sync"],
