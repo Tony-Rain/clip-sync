@@ -2,7 +2,6 @@
 """
 clip-sync - Clipboard sync between devices (GNOME Wayland).
 Supports text, images, files and folders. Multi-device.
-Uses GTK3 via XWayland — no polling, no flickering.
 
 Usage:
     clip-sync                       # Start server
@@ -27,8 +26,8 @@ if "--uninstall" in sys.argv:
 
 # --stop: kill running instance
 if "--stop" in sys.argv:
-    subprocess.run(["pkill", "-f", "clip-sync"],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["pkill", "-f", "clip-sync"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    print("[*] Stopped")
     sys.exit(0)
 
 # Daemon: fork BEFORE any GTK/threads
@@ -126,8 +125,6 @@ class ClipSync:
         with self.peers_lock:
             return len(self.peers) > 0
 
-    # ─── Clipboard events ───
-
     def on_owner_change(self, clipboard, event):
         if self.setting_clipboard:
             return
@@ -146,8 +143,6 @@ class ClipSync:
             self.last_activity = time.time()
             self.broadcast(msg_type, data)
         return False
-
-    # ─── Clipboard read ───
 
     def get_clipboard(self):
         success, targets = self.clipboard.wait_for_targets()
@@ -180,8 +175,6 @@ class ClipSync:
             return TYPE_TEXT, text.encode("utf-8")
 
         return None, None
-
-    # ─── Clipboard write ───
 
     def set_clipboard_data(self, msg_type, data):
         self.setting_clipboard = True
@@ -233,15 +226,11 @@ class ClipSync:
         self.setting_clipboard = False
         return False
 
-    # ─── Hash ───
-
     def set_hash(self, data):
         self.last_hash = hashlib.md5(data).hexdigest()
 
     def is_same_hash(self, data):
         return hashlib.md5(data).hexdigest() == self.last_hash
-
-    # ─── Files ───
 
     def is_from_sync_dir(self, uris):
         for uri in uris:
@@ -320,8 +309,6 @@ class ClipSync:
     def is_image_file(self, p):
         return os.path.splitext(p)[1].lower() in IMAGE_EXTENSIONS
 
-    # ─── Network ───
-
     def broadcast(self, msg_type, data, exclude=None):
         msg = struct.pack("!BI", msg_type, len(data)) + data
         kind = {TYPE_FILES: "files", TYPE_IMAGE: "image"}.get(msg_type, "text")
@@ -397,6 +384,10 @@ class ClipSync:
                 print(f"[~] Listening on port {PORT}...", flush=True)
                 while True:
                     conn, addr = srv.accept()
+                    conn.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+                    conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 10)
+                    conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 5)
+                    conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 3)
                     with self.peers_lock:
                         self.peers.append(conn)
                     threading.Thread(
@@ -421,6 +412,10 @@ class ClipSync:
                 sock.settimeout(3)
                 sock.connect((self.peer_ip, PORT))
                 sock.settimeout(None)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 10)
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 5)
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 3)
                 with self.peers_lock:
                     self.peers.append(sock)
                 self.handle_peer(sock, self.peer_ip)
@@ -428,8 +423,6 @@ class ClipSync:
                 pass
             print("[~] Reconnecting...", flush=True)
             time.sleep(2)
-
-    # ─── Main ───
 
     def run(self):
         os.makedirs(DOWNLOAD_DIR, exist_ok=True)
