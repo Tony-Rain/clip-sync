@@ -288,23 +288,54 @@ class ClipSync:
 
     def save_files(self, files):
         os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+        root = os.path.realpath(DOWNLOAD_DIR)
         saved, saved_dirs = [], set()
         for name, data in files:
-            path = os.path.join(DOWNLOAD_DIR, name)
-            os.makedirs(os.path.dirname(path), exist_ok=True)
+            safe = self._safe_relpath(name)
+            if safe is None:
+                print(f"[!] Rejected unsafe path: {name!r}", flush=True)
+                continue
+            path = os.path.join(root, safe)
+            parent = os.path.dirname(path) or root
+            os.makedirs(parent, exist_ok=True)
+            if os.path.realpath(parent) != root and \
+                    not os.path.realpath(parent).startswith(root + os.sep):
+                print(f"[!] Rejected escaping path: {name!r}", flush=True)
+                continue
             with open(path, "wb") as f:
                 f.write(data)
-            top = name.split(os.sep)[0] if os.sep in name else name
-            top_path = os.path.join(DOWNLOAD_DIR, top)
+            top = safe.split(os.sep, 1)[0]
+            top_path = os.path.join(root, top)
             if top_path not in saved_dirs:
                 saved_dirs.add(top_path)
-                if top_path not in saved:
-                    saved.append(top_path)
+                saved.append(top_path)
+        if not saved:
+            return saved
         if len(saved) == 1:
             print(f"    Saved: {saved[0]}", flush=True)
         else:
             print(f"    Saved: {len(files)} files -> {DOWNLOAD_DIR}", flush=True)
         return saved
+
+    @staticmethod
+    def _safe_relpath(name):
+        # Normalize separators (peer might be on Windows in theory).
+        n = name.replace("\\", "/")
+        # Drop drive letters / leading slashes.
+        while n.startswith("/"):
+            n = n[1:]
+        if len(n) >= 2 and n[1] == ":":
+            n = n[2:].lstrip("/")
+        if not n:
+            return None
+        parts = []
+        for part in n.split("/"):
+            if part in ("", "."):
+                continue
+            if part == "..":
+                return None
+            parts.append(part)
+        return os.path.join(*parts) if parts else None
 
     def is_image_file(self, p):
         return os.path.splitext(p)[1].lower() in IMAGE_EXTENSIONS
