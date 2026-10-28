@@ -20,7 +20,7 @@ sudo make uninstall     # Or: sudo clip-sync --uninstall
 clip-sync                       # server
 clip-sync <ip>                  # client
 clip-sync --daemon [<ip>]       # background (forks, logs to ~/.clip-sync.log)
-clip-sync --stop                # pkill -f clip-sync
+clip-sync --stop                # kill running clip-sync python processes only
 tail -f ~/.clip-sync.log
 ```
 

@@ -26,7 +26,15 @@ if "--uninstall" in sys.argv:
 
 # --stop: kill running instance
 if "--stop" in sys.argv:
-    subprocess.run(["pkill", "-f", "clip-sync"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # Match only python processes running this script, not anything with "clip-sync" in its cmdline
+    out = subprocess.run(["pgrep", "-f", r"^(\S*/)?python3?(\.[0-9]+)? \S*clip-sync(\.py)?( |$)"],
+                         capture_output=True, text=True).stdout
+    for pid in map(int, out.split()):
+        if pid != os.getpid():
+            try:
+                os.kill(pid, 15)
+            except OSError:
+                pass
     print("[*] Stopped")
     sys.exit(0)
 
